@@ -1,1 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schrödinger Solver Code</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        pre {
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            padding: 15px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        code {
+            font-family: 'Courier New', Courier, monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>Schrödinger Solver Code</h1>
+    <p>This is the Python code for solving the time-independent Schrödinger equation using finite difference methods:</p>
+    
+    <pre><code>
+def solve_schrodinger(V_func, x_min=-5, x_max=5, N=1000, mass=1.0, hbar=1.0, num_states=5):
+    # Spatial grid
+    x = np.linspace(x_min, x_max, N)
+    dx = x[1] - x[0]
+    
+    # Potential
+    V = V_func(x)
+    
+    # Kinetic energy matrix (tridiagonal)
+    factor = hbar**2 / (2 * mass * dx**2)
+    diagonal = 2 * factor + V
+    off_diagonal = -factor * np.ones(N - 1)
+    
+    # Solve eigenvalue problem
+    energies, wavefuncs = eigh_tridiagonal(diagonal, off_diagonal)
+    
+    # Normalize wavefunctions
+    norm_wavefuncs = []
+    for n in range(num_states):
+        psi = wavefuncs[:, n]
+        psi /= np.sqrt(np.trapz(psi**2, x))  # Normalize
+        norm_wavefuncs.append(psi)
+    
+    return x, V, energies[:num_states], norm_wavefuncs
+    </code></pre>
+</body>
+</html>
 
