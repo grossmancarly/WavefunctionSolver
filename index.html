@@ -9,14 +9,11 @@
 <body>
     <h1>Quantum Wavefunction Solver</h1>
     
-    <label for="potential">Choose a potential:</label>
-    <select id="potential" onchange="computeSolution()">
-        <option value="harmonic">Harmonic Oscillator (V(x) = 0.5 * x^2)</option>
-        <option value="morse">Morse Potential</option>
-        <option value="square">Square Well</option>
-    </select>
-    <br><br>
+    <label for="potential">Enter your potential function V(x):</label>
+    <input type="text" id="potentialInput" value="0.5 * x ** 2">
+    <button onclick="computeSolution()">Compute Solution</button>
     
+    <br><br>
     <canvas id="plot" width="800" height="600"></canvas>
     
     <script>
@@ -66,42 +63,22 @@
             return { x, V, energies, wavefuncs };
         }
 
-        // Morse potential function
-        function morsePotential(x) {
-            const D_e = 0.8;
-            const a = 1.0;
-            const x_e = 2.5;
-            return D_e * Math.pow(1 - Math.exp(-a * (x - x_e)), 2);
-        }
-
-        // Harmonic potential function
-        function harmonicPotential(x) {
-            return 0.5 * Math.pow(x, 2);
-        }
-
-        // Square well potential function
-        function squareWellPotential(x) {
-            return Math.abs(x) < 1 ? 1 : 0;
+        // Function to evaluate the custom potential input from the user
+        function parsePotential(input) {
+            return function(x) {
+                try {
+                    return eval(input.replace(/x/g, `(${x})`));
+                } catch (e) {
+                    alert("Error in potential function! Please check the syntax.");
+                    return 0; // Return a default value if there's an error
+                }
+            };
         }
 
         // Compute the solution and plot
         function computeSolution() {
-            const potentialSelect = document.getElementById("potential");
-            let V_func;
-            switch (potentialSelect.value) {
-                case "harmonic":
-                    V_func = harmonicPotential;
-                    break;
-                case "morse":
-                    V_func = morsePotential;
-                    break;
-                case "square":
-                    V_func = squareWellPotential;
-                    break;
-                default:
-                    V_func = harmonicPotential;
-                    break;
-            }
+            const potentialInput = document.getElementById("potentialInput").value;
+            const V_func = parsePotential(potentialInput);
 
             // Solve Schrödinger equation
             const { x, V, energies, wavefuncs } = solveSchrodinger(V_func, -5, 5, 1000, 1.0, 1.0, 5);
