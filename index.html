@@ -3,55 +3,137 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Schrödinger Solver Code</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-        pre {
-            background-color: #f4f4f4;
-            border: 1px solid #ddd;
-            padding: 15px;
-            overflow-x: auto;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-        code {
-            font-family: 'Courier New', Courier, monospace;
-        }
-    </style>
+    <title>Quantum Wavefunction Solver</title>
+    <script src="https://cdn.jsdelivr.net/npm/mathjs/lib/browser/math.js"></script>
 </head>
 <body>
-    <h1>Schrödinger Solver Code</h1>
-    <p>This is the Python code for solving the time-independent Schrödinger equation using finite difference methods:</p>
+    <h1>Quantum Wavefunction Solver</h1>
     
-    <pre><code>
-def solve_schrodinger(V_func, x_min=-5, x_max=5, N=1000, mass=1.0, hbar=1.0, num_states=5):
-    # Spatial grid
-    x = np.linspace(x_min, x_max, N)
-    dx = x[1] - x[0]
+    <label for="potential">Choose a potential:</label>
+    <select id="potential" onchange="computeSolution()">
+        <option value="harmonic">Harmonic Oscillator (V(x) = 0.5 * x^2)</option>
+        <option value="morse">Morse Potential</option>
+        <option value="square">Square Well</option>
+    </select>
+    <br><br>
     
-    # Potential
-    V = V_func(x)
+    <canvas id="plot" width="800" height="600"></canvas>
     
-    # Kinetic energy matrix (tridiagonal)
-    factor = hbar**2 / (2 * mass * dx**2)
-    diagonal = 2 * factor + V
-    off_diagonal = -factor * np.ones(N - 1)
-    
-    # Solve eigenvalue problem
-    energies, wavefuncs = eigh_tridiagonal(diagonal, off_diagonal)
-    
-    # Normalize wavefunctions
-    norm_wavefuncs = []
-    for n in range(num_states):
-        psi = wavefuncs[:, n]
-        psi /= np.sqrt(np.trapz(psi**2, x))  # Normalize
-        norm_wavefuncs.append(psi)
-    
-    return x, V, energies[:num_states], norm_wavefuncs
-    </code></pre>
+    <script>
+        // Define the function to compute the Schrödinger equation
+        function solveSchrodinger(V_func, x_min=-5, x_max=5, N=1000, mass=1.0, hbar=1.0, num_states=5) {
+            // Spatial grid
+            const x = [];
+            const dx = (x_max - x_min) / (N - 1);
+            for (let i = 0; i < N; i++) {
+                x.push(x_min + i * dx);
+            }
+            
+            // Potential V(x)
+            const V = x.map(V_func);
+            
+            // Kinetic energy matrix (tridiagonal)
+            const factor = Math.pow(hbar, 2) / (2 * mass * Math.pow(dx, 2));
+            const diagonal = V.map((v, i) => 2 * factor + v);
+            const off_diagonal = new Array(N - 1).fill(-factor);
+            
+            // Eigenvalue problem: Using the tridiagonal matrix algorithm
+            let energies = [];
+            let wavefuncs = [];
+            
+            // Create the Hamiltonian matrix (diagonal and off-diagonal)
+            const H = [];
+            for (let i = 0; i < N; i++) {
+                H.push(new Array(N).fill(0));
+                H[i][i] = diagonal[i];
+                if (i < N - 1) {
+                    H[i][i + 1] = off_diagonal[i];
+                    H[i + 1][i] = off_diagonal[i];
+                }
+            }
+
+            // Solve the eigenvalue problem: compute eigenvalues (energies) and eigenvectors (wavefunctions)
+            const eig = numeric.eig(H); // Using numeric.js library for eigenvalue solver
+            energies = eig.lambda.slice(0, num_states);
+            wavefuncs = eig.E.slice(0, num_states);
+
+            // Normalize the wavefunctions
+            wavefuncs.forEach(psi => {
+                const norm = Math.sqrt(x.reduce((sum, xi, i) => sum + Math.pow(psi[i], 2) * (x[1] - x[0]), 0));
+                psi.forEach((val, i) => psi[i] = val / norm);
+            });
+
+            return { x, V, energies, wavefuncs };
+        }
+
+        // Morse potential function
+        function morsePotential(x) {
+            const D_e = 0.8;
+            const a = 1.0;
+            const x_e = 2.5;
+            return D_e * Math.pow(1 - Math.exp(-a * (x - x_e)), 2);
+        }
+
+        // Harmonic potential function
+        function harmonicPotential(x) {
+            return 0.5 * Math.pow(x, 2);
+        }
+
+        // Square well potential function
+        function squareWellPotential(x) {
+            return Math.abs(x) < 1 ? 1 : 0;
+        }
+
+        // Compute the solution and plot
+        function computeSolution() {
+            const potentialSelect = document.getElementById("potential");
+            let V_func;
+            switch (potentialSelect.value) {
+                case "harmonic":
+                    V_func = harmonicPotential;
+                    break;
+                case "morse":
+                    V_func = morsePotential;
+                    break;
+                case "square":
+                    V_func = squareWellPotential;
+                    break;
+                default:
+                    V_func = harmonicPotential;
+                    break;
+            }
+
+            // Solve Schrödinger equation
+            const { x, V, energies, wavefuncs } = solveSchrodinger(V_func, -5, 5, 1000, 1.0, 1.0, 5);
+
+            // Plot the results on the canvas
+            const canvas = document.getElementById("plot");
+            const ctx = canvas.getContext("2d");
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw the potential
+            ctx.beginPath();
+            ctx.moveTo(x[0], V[0] * 100); // Scale for visibility
+            for (let i = 1; i < x.length; i++) {
+                ctx.lineTo(x[i], V[i] * 100);
+            }
+            ctx.strokeStyle = 'black';
+            ctx.stroke();
+            
+            // Draw wavefunctions
+            wavefuncs.forEach((psi, index) => {
+                ctx.beginPath();
+                ctx.moveTo(x[0], psi[0] * 100 + energies[index] * 50); // Scale for visibility
+                for (let i = 1; i < x.length; i++) {
+                    ctx.lineTo(x[i], psi[i] * 100 + energies[index] * 50);
+                }
+                ctx.strokeStyle = index % 2 === 0 ? 'blue' : 'red';
+                ctx.stroke();
+            });
+        }
+
+        // Initial computation
+        window.onload = computeSolution;
+    </script>
 </body>
 </html>
-
